@@ -1,0 +1,13 @@
+{
+  "name": "web",
+  "short_name": "web",
+  "start_url": "/marcadores/",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "icono.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marcadores</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Marcadores">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      :root {
+        --bg:          #f0f2f5;
+        --surface:     #ffffff;
+        --surface-2:   #f7f8fa;
+        --border:      #e2e5ea;
+        --border-2:    #d0d4db;
+        --text:        #111318;
+        --text-sub:    #4a5060;
+        --text-hint:   #8a909e;
+        --accent:      #3b6ef8;
+        --accent-soft: #eef1ff;
+        --accent-2:    #2554d4;
+        --danger:      #e03e3e;
+        --danger-soft: #fff0f0;
+        --radius:      12px;
+        --radius-sm:   8px;
+        --radius-xs:   5px;
+        --shadow:      0 1px 4px rgba(0,0,0,0.07), 0 2px 12px rgba(0,0,0,0.04);
+        --shadow-md:   0 4px 20px rgba(0,0,0,0.10);
+        --topbar-h:    58px;
+        --chips-h:     48px;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+      #topbar {
+        position: fixed; top: 0; left: 0; right: 0; height: var(--topbar-h);
+        background: var(--surface); border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 10px; padding: 0 16px;
+        z-index: 100; box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+      }
+      #topbar-logo { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; white-space: nowrap; flex-shrink: 0; }
+      #busqueda-wrap { flex: 1; position: relative; max-width: 420px; }
+      #busqueda-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-hint); pointer-events: none; }
+      #busqueda {
+        width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border);
+        border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 13.5px;
+        background: var(--surface-2); color: var(--text); outline: none;
+        transition: border-color .15s, box-shadow .15s;
+      }
+      #busqueda:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,110,248,0.12); background: var(--surface); }
+      #busqueda::placeholder { color: var(--text-hint); }
+      .topbar-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
+      .btn-icon {
+        display: flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: var(--radius-sm);
+        border: 1px solid var(--border); background: var(--surface);
+        color: var(--text-sub); cursor: pointer; font-size: 16px;
+        transition: background .14s, border-color .14s, color .14s;
+      }
+      .btn-icon:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); }
+      .btn-icon.accent { background: var(--accent); border-color: var(--accent); color: #fff; font-size: 20px; }
+      .btn-icon.accent:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+      #chips-wrap {
+        position: fixed; top: var(--topbar-h); left: 0; right: 0; height: var(--chips-h);
+        background: var(--surface); border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; padding: 0 16px; gap: 6px;
+        overflow-x: auto; z-index: 99; scrollbar-width: none;
+      }
+      #chips-wrap::-webkit-scrollbar { display: none; }
+      .chip {
+        flex-shrink: 0; padding: 5px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 500;
+        border: 1px solid var(--border); background: var(--surface-2); color: var(--text-sub);
+        cursor: pointer; transition: background .13s, border-color .13s, color .13s;
+        display: flex; align-items: center; gap: 5px; white-space: nowrap;
+      }
+      .chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+      .chip.activo { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .chip-count { font-size: 10px; border-radius: 10px; padding: 0 5px; font-weight: 600; }
+      .chip.activo .chip-count { background: rgba(255,255,255,0.3); }
+      .chip:not(.activo) .chip-count { background: var(--border); color: var(--text-hint); }
+      .chip-nueva {
+        flex-shrink: 0; padding: 5px 12px; border-radius: 20px; font-size: 12px;
+        border: 1px dashed var(--border-2); background: transparent; color: var(--text-hint);
+        cursor: pointer; transition: border-color .13s, color .13s;
+      }
+      .chip-nueva:hover { border-color: var(--accent); color: var(--accent); }
+      .chip.fijada::before { content: '📌 '; font-size: 11px; }
+
+      #contenido { padding: calc(var(--topbar-h) + var(--chips-h) + 20px) 16px 30px; max-width: 1000px; margin: 0 auto; }
+      #resultado-count { font-size: 12px; color: var(--text-hint); margin-bottom: 14px; min-height: 18px; }
+
+      #grid { display: flex; flex-direction: column; gap: 8px; }
+
+      .tarjeta {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow); padding: 12px 16px; cursor: pointer;
+        transition: box-shadow .15s, border-color .15s, transform .12s;
+        display: flex; flex-direction: row; align-items: center;
+        gap: 12px; position: relative; overflow: hidden;
+      }
+      .tarjeta:hover { box-shadow: var(--shadow-md); border-color: var(--accent); transform: translateY(-1px); }
+      .tarjeta-top { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+      .tarjeta-icono {
+        width: 36px; height: 36px; border-radius: var(--radius-xs); flex-shrink: 0;
+        overflow: hidden; display: flex; align-items: center; justify-content: center;
+        background: var(--surface-2); border: 1px solid var(--border);
+      }
+      .tarjeta-icono img { width: 100%; height: 100%; object-fit: contain; }
+      .icono-fallback {
+        width: 36px; height: 36px; border-radius: var(--radius-xs);
+        background: var(--accent-soft); border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+      }
+      .tarjeta-info { flex: 1; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+      .tarjeta-titulo {
+        font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+
+      .tarjeta-url { font-size: 11px; color: var(--text-hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tarjeta-carpeta {
+        display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px;
+        color: var(--accent); background: var(--accent-soft); border-radius: 4px;
+        padding: 2px 7px; align-self: flex-start;
+      }
+      .tarjeta-acciones { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+      .tarjeta:hover .tarjeta-acciones { opacity: 1; }
+      .btn-tarjeta {
+        width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border);
+        background: var(--surface); color: var(--text-sub); cursor: pointer; font-size: 12px;
+        display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s;
+      }
+      .btn-tarjeta:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+      .btn-tarjeta.editar:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+      #estado-vacio {
+        display: none; flex-direction: column; align-items: center;
+        justify-content: center; padding: 60px 20px; gap: 10px; text-align: center;
+      }
+      #estado-vacio .vacio-icon { font-size: 3rem; opacity: .3; }
+      #estado-vacio p { font-size: 13px; color: var(--text-hint); max-width: 260px; line-height: 1.6; }
+
+      .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+        z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px;
+      }
+      .modal-overlay.visible { display: flex; }
+      .modal-box {
+        background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-md);
+        width: 100%; max-width: 420px; display: flex; flex-direction: column; overflow: hidden;
+        animation: slideUp .2s ease;
+      }
+      @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+      .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+      .modal-header strong { font-size: 14px; font-weight: 600; }
+      .modal-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      .modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+      .campo { display: flex; flex-direction: column; gap: 5px; }
+      .campo label { font-size: 11.5px; font-weight: 600; color: var(--text-sub); }
+      .campo input, .campo select {
+        padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text);
+        background: var(--surface-2); outline: none; transition: border-color .15s, box-shadow .15s;
+      }
+      .campo input:focus, .campo select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,110,248,0.12); background: var(--surface); }
+      .btn {
+        padding: 8px 18px; border-radius: var(--radius-sm); font-family: 'Inter', sans-serif;
+        font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border);
+        background: var(--surface-2); color: var(--text); transition: background .13s, border-color .13s;
+      }
+      .btn:hover { background: var(--border); }
+      .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+      .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+      .btn.danger:hover { background: #c03030; border-color: #c03030; }
+
+      #toast {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: #1a1e2a; color: #fff; padding: 9px 18px;
+        border-radius: var(--radius-sm); font-size: 12.5px;
+        z-index: 999; display: none; white-space: nowrap; box-shadow: var(--shadow-md);
+      }
+      #spinner {
+        position: fixed; bottom: 20px; right: 20px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 7px 14px; font-size: 12px; color: var(--text-sub);
+        display: none; box-shadow: var(--shadow);
+      }
+      @media (max-width: 480px) {
+        #grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
+        #topbar-logo { font-size: 15px; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="topbar">
+      <div id="topbar-logo">🔖 Marcadores</div>
+      <div id="busqueda-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="busqueda" type="text" placeholder="Buscar marcadores…" oninput="filtrar()">
+      </div>
+      <div class="topbar-actions">
+        <div style="position:relative;">
+          <button class="btn-icon" title="Guardar" onclick="toggleMenuGuardar(event)">💾</button>
+          <div id="menu-guardar" style="display:none;position:absolute;top:42px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:300;min-width:150px;overflow:hidden;">
+            <div onclick="exportarJSON()" style="padding:10px 14px;font-size:12.5px;cursor:pointer;transition:background .12s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">📄 Guardar JSON local</div>
+            <div onclick="guardarNube();cerrarMenus()" style="padding:10px 14px;font-size:12.5px;cursor:pointer;border-top:1px solid var(--border);transition:background .12s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">☁️ Guardar en nube</div>
+          </div>
+        </div>
+        <div style="position:relative;">
+          <button class="btn-icon" title="Cargar" onclick="toggleMenuCargar(event)">📂</button>
+          <div id="menu-cargar" style="display:none;position:absolute;top:42px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:300;min-width:150px;overflow:hidden;">
+            <div onclick="importarJSON()" style="padding:10px 14px;font-size:12.5px;cursor:pointer;transition:background .12s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">📄 Cargar JSON local</div>
+            <div onclick="cargarNube();cerrarMenus()" style="padding:10px 14px;font-size:12.5px;cursor:pointer;border-top:1px solid var(--border);transition:background .12s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">☁️ Cargar desde nube</div>
+          </div>
+        </div>
+        <input type="file" id="input-json" accept=".json" style="display:none" onchange="procesarJSON(this)">
+
+        <button class="btn-icon" title="Worker URL" onclick="abrirConfigWorker()">⚙️</button>
+        <button class="btn-icon accent" title="Agregar marcador" onclick="abrirModalAgregar()">+</button>
+      </div>
+    </div>
+
+    <div id="chips-wrap">
+      <div class="chip activo" data-carpeta="__todas__" onclick="seleccionarCarpeta('__todas__', this)">
+        Todas <span class="chip-count" id="count-todas">0</span>
+      </div>
+      <div class="chip-nueva" onclick="abrirModalCarpeta()">+ Carpeta</div>
+    </div>
+
+    <div id="contenido">
+      <div id="resultado-count"></div>
+      <div id="grid"></div>
+      <div id="estado-vacio">
+        <div class="vacio-icon">🔖</div>
+        <p>Sin marcadores aquí.<br>Presiona <strong>+</strong> para agregar uno.</p>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-agregar">
+      <div class="modal-box">
+        <div class="modal-header">
+          <strong id="modal-agregar-titulo">Agregar marcador</strong>
+          <button class="btn-icon" onclick="cerrarModal('modal-agregar')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="campo"><label>URL</label><input type="text" id="input-url" placeholder="https://…" oninput="autocompletarTitulo()"></div>
+          <div class="campo"><label>Título</label><input type="text" id="input-titulo" placeholder="Nombre del sitio"></div>
+          <div class="campo"><label>Carpeta</label><select id="input-carpeta"></select></div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn" onclick="cerrarModal('modal-agregar')">Cancelar</button>
+          <button class="btn primary" onclick="guardarMarcador()">Guardar</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-carpeta">
+      <div class="modal-box">
+        <div class="modal-header">
+          <strong id="modal-carpeta-titulo">Nueva carpeta</strong>
+          <button class="btn-icon" onclick="cerrarModal('modal-carpeta')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="campo">
+            <label>Nombre</label>
+            <input type="text" id="input-carpeta-nombre" placeholder="Ej: Trabajo, Personal…"
+                   onkeydown="if(event.key==='Enter') guardarCarpeta()">
+          </div>
+        </div>
+        <div class="modal-footer" style="flex-wrap:wrap;gap:6px;">
+          <button class="btn" onclick="cerrarModal('modal-carpeta')">Cancelar</button>
+          <button class="btn danger" id="btn-eliminar-carpeta" style="display:none" onclick="eliminarCarpeta()">Eliminar</button>
+          <button class="btn" id="btn-fijar-carpeta" style="display:none" onclick="fijarCarpeta()">📌 Fijar inicio</button>
+          <button class="btn primary" onclick="guardarCarpeta()">Guardar</button>
+        </div>      
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="spinner">⏳ Cargando íconos…</div>
+
+    <script>
+      const WORKER_KEY = '_cf_worker_url';
+      let CF_WORKER    = localStorage.getItem(WORKER_KEY) || '';
+      const KV_ID_KEY  = '_marcadores_id';
+      const LS_BACKUP  = '_marcadores_backup';
+
+      let marcadores = [];
+      let carpetas   = [];
+      let carpetaActiva       = '__todas__';
+      let editandoId          = null;
+      let editandoCarpetaOrig = null;
+
+      /* ── IndexedDB ── */
+      const DB_NAME    = 'MarcadoresDB';
+      const DB_VERSION = 2;
+      let db = null;
+
+      function abrirDB() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(DB_NAME, DB_VERSION);
+          req.onupgradeneeded = e => {
+            const d = e.target.result;
+            if (!d.objectStoreNames.contains('datos'))  d.createObjectStore('datos',  { keyPath: 'clave' });
+            if (!d.objectStoreNames.contains('iconos')) d.createObjectStore('iconos', { keyPath: 'url' });
+          };
+          req.onsuccess = e => { db = e.target.result; resolve(db); };
+          req.onerror   = e => reject(e.target.error);
+        });
+      }
+
+      function dbPut(store, obj) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(store, 'readwrite');
+          tx.objectStore(store).put(obj).onsuccess = () => resolve();
+          tx.onerror = e => reject(e.target.error);
+        });
+      }
+
+      function dbGet(store, key) {
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(store, 'readonly');
+          const req = tx.objectStore(store).get(key);
+          req.onsuccess = e => resolve(e.target.result);
+          req.onerror   = e => reject(e.target.error);
+        });
+      }
+
+      async function persistir() {
+        await dbPut('datos', { clave: 'principal', marcadores, carpetas });
+        try { localStorage.setItem(LS_BACKUP, JSON.stringify({ marcadores, carpetas })); } catch(e) {}
+      }
+
+      async function cargarDatos() {
+        try {
+          const d = await dbGet('datos', 'principal');
+          if (d) { marcadores = d.marcadores || []; carpetas = d.carpetas || []; return; }
+        } catch(e) {}
+        try {
+          const b = JSON.parse(localStorage.getItem(LS_BACKUP) || 'null');
+          if (b) { marcadores = b.marcadores || []; carpetas = b.carpetas || []; toast('📦 Datos cargados desde respaldo local'); }
+        } catch(e) {}
+      }
+
+      async function guardarIconoDB(clave, blob) {
+        try { await dbPut('iconos', { url: clave, blob }); } catch(e) {}
+      }
+
+      /* ── Init ── */
+      async function init() {
+        await abrirDB();
+        await cargarDatos();
+        const fijada = localStorage.getItem('_marcadores_carpeta_inicio');
+        if (fijada && carpetas.includes(fijada)) carpetaActiva = fijada;
+        renderChips();
+        renderGrid();
+        actualizarIconosFaltantes();
+      }
+      init();
+
+      function getId() {
+        let id = localStorage.getItem(KV_ID_KEY);
+        if (!id) { id = 'mrc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); localStorage.setItem(KV_ID_KEY, id); }
+        return id;
+      }
+
+      /* ── Íconos ── */
+      function dominioDe(url) { try { return new URL(url).hostname; } catch { return ''; } }
+      function urlIconoGoogle(dom) {
+        const base = CF_WORKER ? CF_WORKER + '/raw?target=' : '';
+        const googleUrl = `https://www.google.com/s2/favicons?domain=${dom}&sz=64`;
+        return base ? base + encodeURIComponent(googleUrl) : googleUrl;
+      }
+
+      const blobURLCache = {};
+
+      async function descargarYGuardarIcono(dominio, urlBase = null) {
+        if (!CF_WORKER) return null;
+
+        const raw = (url) => CF_WORKER + '/raw?target=' + encodeURIComponent(url);
+
+        // ── Paso 1: icono.jpg relativo a la URL del marcador (apps propias) ──
+        if (urlBase) {
+          try {
+            let baseDir = urlBase;
+            if (!baseDir.endsWith('/')) {
+              const ultimoSegmento = baseDir.substring(baseDir.lastIndexOf('/') + 1);
+              if (!ultimoSegmento.includes('.')) baseDir += '/';
+              else baseDir = baseDir.substring(0, baseDir.lastIndexOf('/') + 1);
+            }
+            const resp = await fetch(raw(baseDir + 'icono.jpg'));
+            if (resp.ok) {
+              const blob = await resp.blob();
+              if (blob.size > 0 && blob.type.startsWith('image')) {
+                await guardarIconoDB(urlBase || dominio, blob);
+                return URL.createObjectURL(blob);
+              }
+            }
+          } catch(e) {}
+        }
+
+        // ── Paso 2: Google Favicons ──
+        try {
+          const resp = await fetch(raw(`https://www.google.com/s2/favicons?domain=${dominio}&sz=64`));
+          if (resp.ok) {
+            const blob = await resp.blob();
+            if (blob.size > 0) {
+              await guardarIconoDB(urlBase || dominio, blob);
+              return URL.createObjectURL(blob);
+            }
+          }
+        } catch(e) {}
+
+        return null;
+      }
+
+      async function actualizarIconosFaltantes() {
+        const sinIcono = []; // array de { clave, urlBase }
+        for (const m of marcadores) {
+          const clave = m.url; // usar URL completa como clave
+          if (blobURLCache[clave] !== undefined) continue;
+          const enDB = await dbGet('iconos', clave);
+          if (enDB && enDB.blob) {
+            blobURLCache[clave] = URL.createObjectURL(enDB.blob);
+          } else {
+            sinIcono.push(clave);
+            blobURLCache[clave] = null;
+          }
+        }
+        renderGrid();
+        if (!sinIcono.length) return;
+        mostrarSpinner(true);
+
+        const unicas = [...new Set(sinIcono)];
+        const LOTE = 5;
+        for (let i = 0; i < unicas.length; i += LOTE) {
+          await Promise.all(unicas.slice(i, i + LOTE).map(async clave => {
+            const blobURL = await descargarYGuardarIcono(dominioDe(clave), clave);
+            blobURLCache[clave] = blobURL;
+          }));
+          renderGrid();
+        }
+
+        mostrarSpinner(false);
+        renderGrid();
+      }
+
+      /* ── Chips ── */
+      function renderChips() {
+        const wrap     = document.getElementById('chips-wrap');
+        const btnNueva = wrap.querySelector('.chip-nueva');
+        wrap.querySelectorAll('.chip:not([data-carpeta="__todas__"])').forEach(c => c.remove());
+        carpetas.forEach(carp => {
+          const count = marcadores.filter(m => m.carpeta === carp).length;
+          const chip  = document.createElement('div');
+          const fijada = localStorage.getItem('_marcadores_carpeta_inicio');
+          chip.className = 'chip' + (carpetaActiva === carp ? ' activo' : '') + (carp === fijada ? ' fijada' : '');
+          chip.dataset.carpeta = carp;
+          chip.innerHTML = `${carp} <span class="chip-count">${count}</span>`;
+          chip.onclick    = () => seleccionarCarpeta(carp, chip);
+          chip.ondblclick = e => { e.stopPropagation(); abrirModalCarpeta(carp); };
+          chip.title = 'Doble clic para editar';
+          wrap.insertBefore(chip, btnNueva);
+        });
+        document.getElementById('count-todas').textContent = marcadores.length;
+        if (carpetaActiva === '__todas__') {
+          wrap.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
+          wrap.querySelector('[data-carpeta="__todas__"]').classList.add('activo');
+        }
+      }
+
+      function seleccionarCarpeta(carp, el) {
+        carpetaActiva = carp;
+        document.querySelectorAll('#chips-wrap .chip').forEach(c => c.classList.remove('activo'));
+        el.classList.add('activo');
+        filtrar();
+      }
+
+      /* ── Grid ── */
+      function marcadoresFiltrados() {
+        const q = document.getElementById('busqueda').value.trim().toLowerCase();
+        return marcadores.filter(m => {
+          const enCarpeta = carpetaActiva === '__todas__' || m.carpeta === carpetaActiva;
+          if (!enCarpeta) return false;
+          if (!q) return true;
+          return (m.titulo + ' ' + m.url).toLowerCase().includes(q);
+        });
+      }
+
+      function renderGrid() {
+        const grid    = document.getElementById('grid');
+        const vacio   = document.getElementById('estado-vacio');
+        const countEl = document.getElementById('resultado-count');
+        const lista   = marcadoresFiltrados();
+        grid.innerHTML = '';
+        if (!lista.length) { vacio.style.display = 'flex'; countEl.textContent = ''; return; }
+        vacio.style.display = 'none';
+        const q = document.getElementById('busqueda').value.trim();
+        countEl.textContent = q ? `${lista.length} resultado${lista.length !== 1 ? 's' : ''} para "${q}"` : '';
+
+        lista.forEach(m => {
+          const dom  = dominioDe(m.url);
+          const card = document.createElement('div');
+          card.className = 'tarjeta';
+          card.onclick = () => window.open(m.url, '_blank', 'noopener');
+
+          const top = document.createElement('div');
+          top.className = 'tarjeta-top';
+
+          const blobURL = blobURLCache[m.url] ?? null;
+          if (blobURL) {
+            const wrap = document.createElement('div');
+            wrap.className = 'tarjeta-icono';
+            const img = document.createElement('img');
+            img.src = blobURL; img.alt = '';
+            img.onerror = () => { wrap.replaceWith(crearFallback(dom)); };
+            wrap.appendChild(img);
+            top.appendChild(wrap);
+          } else {
+            top.appendChild(crearFallback(dom));
+          }
+
+          card.appendChild(top);
+
+          const info = document.createElement('div');
+          info.className = 'tarjeta-info';
+
+          const tit = document.createElement('div');
+          tit.className = 'tarjeta-titulo';
+          tit.textContent = m.titulo || dom;
+          info.appendChild(tit);
+
+          const urlEl = document.createElement('div');
+          urlEl.className = 'tarjeta-url';
+          urlEl.textContent = dom || m.url;
+          info.appendChild(urlEl);
+
+          card.appendChild(info);
+
+          if (m.carpeta) {
+            const badge = document.createElement('div');
+            badge.className = 'tarjeta-carpeta';
+            badge.textContent = '📁 ' + m.carpeta;
+            card.appendChild(badge);
+          }
+
+          const acc = document.createElement('div');
+          acc.className = 'tarjeta-acciones';
+          const btnEdit = document.createElement('button');
+          btnEdit.className = 'btn-tarjeta editar'; btnEdit.title = 'Editar'; btnEdit.textContent = '✏️';
+          btnEdit.onclick = e => { e.stopPropagation(); abrirModalEditar(m.id); };
+          const btnDel = document.createElement('button');
+          btnDel.className = 'btn-tarjeta'; btnDel.title = 'Eliminar'; btnDel.textContent = '✕';
+          btnDel.onclick = e => { e.stopPropagation(); eliminarMarcador(m.id); };
+          acc.appendChild(btnEdit); acc.appendChild(btnDel);
+          card.appendChild(acc);
+          grid.appendChild(card);
+        });
+      }
+
+      function crearFallback(dom) {
+        const el = document.createElement('div');
+        el.className = 'icono-fallback';
+        el.textContent = dom ? dom[0].toUpperCase() : '🔖';
+        return el;
+      }
+
+      function filtrar() { renderGrid(); }
+
+      /* ── Modal agregar/editar ── */
+      function abrirModalAgregar() {
+        editandoId = null;
+        document.getElementById('modal-agregar-titulo').textContent = 'Agregar marcador';
+        document.getElementById('input-url').value    = '';
+        document.getElementById('input-titulo').value = '';
+        llenarSelectCarpetas('');
+        document.getElementById('modal-agregar').classList.add('visible');
+        setTimeout(() => document.getElementById('input-url').focus(), 100);
+      }
+
+      function abrirModalEditar(id) {
+        const m = marcadores.find(x => x.id === id);
+        if (!m) return;
+        editandoId = id;
+        document.getElementById('modal-agregar-titulo').textContent = 'Editar marcador';
+        document.getElementById('input-url').value    = m.url;
+        document.getElementById('input-titulo').value = m.titulo;
+        llenarSelectCarpetas(m.carpeta);
+        document.getElementById('modal-agregar').classList.add('visible');
+        setTimeout(() => document.getElementById('input-titulo').focus(), 100);
+      }
+
+      function llenarSelectCarpetas(sel) {
+        const el = document.getElementById('input-carpeta');
+        el.innerHTML = '<option value="">— Sin carpeta —</option>';
+        carpetas.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c; opt.textContent = c;
+          if (c === sel) opt.selected = true;
+          el.appendChild(opt);
+        });
+      }
+
+      let _autoTimer = null;
+      function autocompletarTitulo() {
+        clearTimeout(_autoTimer);
+        _autoTimer = setTimeout(() => {
+          const url = document.getElementById('input-url').value.trim();
+          if (!url) return;
+          const dom = dominioDe(url);
+
+          if (dom && !document.getElementById('input-titulo').value) {
+            document.getElementById('input-titulo').value =
+              dom.replace(/^www\./,'').replace(/\.\w+$/,'')
+              .split('.').map(p => p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
+          }      
+        }, 600);
+      }
+
+      async function guardarMarcador() {
+        let url   = document.getElementById('input-url').value.trim();
+        const tit = document.getElementById('input-titulo').value.trim();
+        const carp = document.getElementById('input-carpeta').value;
+        if (!url) { toast('⚠️ Ingresa una URL'); return; }
+        if (!url.startsWith('http')) url = 'https://' + url;
+        const dom = dominioDe(url);
+
+        if (editandoId) {
+          const idx = marcadores.findIndex(m => m.id === editandoId);
+          if (idx !== -1) marcadores[idx] = { ...marcadores[idx], url, titulo: tit || dom, carpeta: carp };
+          toast('✅ Marcador actualizado');
+        } else {
+          marcadores.push({ id: 'm_' + Date.now(), titulo: tit || dom, url, carpeta: carp });
+          toast('✅ Marcador agregado');
+          if (blobURLCache[url] === undefined) {
+            const blobURL = await descargarYGuardarIcono(dom, url);
+            blobURLCache[url] = blobURL;
+          }
+        }
+        await persistir();
+        renderChips(); renderGrid();
+        cerrarModal('modal-agregar');
+      }
+
+      async function eliminarMarcador(id) {
+        marcadores = marcadores.filter(m => m.id !== id);
+        await persistir(); renderChips(); renderGrid();
+        toast('🗑️ Marcador eliminado');
+      }
+
+      /* ── Modal carpeta ── */
+      function abrirModalCarpeta(carpetaExistente = null) {
+        editandoCarpetaOrig = carpetaExistente;
+        document.getElementById('modal-carpeta-titulo').textContent = carpetaExistente ? 'Editar carpeta' : 'Nueva carpeta';
+        document.getElementById('input-carpeta-nombre').value = carpetaExistente || '';
+        document.getElementById('btn-eliminar-carpeta').style.display = carpetaExistente ? 'block' : 'none';
+        document.getElementById('btn-fijar-carpeta').style.display   = carpetaExistente ? 'block' : 'none';
+        const fijada = localStorage.getItem('_marcadores_carpeta_inicio');
+        document.getElementById('btn-fijar-carpeta').textContent =
+          carpetaExistente === fijada ? '📌 Quitar fijación' : '📌 Fijar inicio';
+        document.getElementById('modal-carpeta').classList.add('visible');
+        setTimeout(() => document.getElementById('input-carpeta-nombre').focus(), 100);
+      }
+
+      function fijarCarpeta() {
+        const fijada = localStorage.getItem('_marcadores_carpeta_inicio');
+        if (editandoCarpetaOrig === fijada) {
+          localStorage.removeItem('_marcadores_carpeta_inicio');
+          toast('📌 Fijación eliminada');
+        } else {
+          localStorage.setItem('_marcadores_carpeta_inicio', editandoCarpetaOrig);
+          toast('📌 ' + editandoCarpetaOrig + ' fijada como inicio');
+        }
+        cerrarModal('modal-carpeta');
+        renderChips();
+      }
+
+      async function guardarCarpeta() {
+        const nombre = document.getElementById('input-carpeta-nombre').value.trim();
+        if (!nombre) { toast('⚠️ Ingresa un nombre'); return; }
+        if (editandoCarpetaOrig) {
+          const idx = carpetas.indexOf(editandoCarpetaOrig);
+          if (idx !== -1) carpetas[idx] = nombre;
+          marcadores.forEach(m => { if (m.carpeta === editandoCarpetaOrig) m.carpeta = nombre; });
+          if (carpetaActiva === editandoCarpetaOrig) carpetaActiva = nombre;
+          toast('✅ Carpeta renombrada');
+        } else {
+          if (carpetas.includes(nombre)) { toast('⚠️ Ya existe esa carpeta'); return; }
+          carpetas.push(nombre); toast('✅ Carpeta creada');
+        }
+        await persistir(); renderChips(); renderGrid();
+        cerrarModal('modal-carpeta');
+      }
+
+      async function eliminarCarpeta() {
+        if (!editandoCarpetaOrig) return;
+        const tiene = marcadores.some(m => m.carpeta === editandoCarpetaOrig);
+        if (tiene && !confirm(`La carpeta "${editandoCarpetaOrig}" tiene marcadores. ¿Eliminarla y dejar los marcadores sin carpeta?`)) return;
+        marcadores.forEach(m => { if (m.carpeta === editandoCarpetaOrig) m.carpeta = ''; });
+        carpetas = carpetas.filter(c => c !== editandoCarpetaOrig);
+        if (carpetaActiva === editandoCarpetaOrig) carpetaActiva = '__todas__';
+        await persistir(); renderChips(); renderGrid();
+        cerrarModal('modal-carpeta'); toast('🗑️ Carpeta eliminada');
+      }
+
+      /* ── Nube KV ── */
+      async function guardarNube() {
+        if (!CF_WORKER) { toast('⚠️ Configura el Worker URL primero'); return; }
+        try {
+          const resp = await fetch(`${CF_WORKER}/kv-save`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: getId(), data: { marcadores, carpetas } })
+          });
+          if (resp.ok) toast('☁️ Guardado en la nube ✓');
+          else throw new Error(resp.statusText);
+        } catch(e) { toast('❌ Error: ' + e.message); }
+      }
+
+      async function cargarNube() {
+        if (!CF_WORKER) { toast('⚠️ Configura el Worker URL primero'); return; }
+        try {
+          const resp = await fetch(`${CF_WORKER}/kv-load?id=${getId()}`);
+          const data = await resp.json();
+          if (data && data.marcadores) {
+            marcadores = data.marcadores; carpetas = data.carpetas || [];
+            await persistir();
+            Object.keys(blobURLCache).forEach(k => delete blobURLCache[k]);
+            renderChips(); renderGrid(); actualizarIconosFaltantes();
+            toast(`☁️ ${marcadores.length} marcadores cargados`);
+          } else { toast('☁️ Sin datos en la nube'); }
+        } catch(e) { toast('❌ Error: ' + e.message); }
+      }
+
+      /* ── Exportar / Importar JSON local ── */
+      function exportarJSON() {
+        cerrarMenus();
+        const datos = { marcadores, carpetas };
+        const blob  = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+        const a     = document.createElement('a');
+        a.href      = URL.createObjectURL(blob);
+        a.download  = 'marcadores.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast('📄 JSON exportado');
+      }
+
+      function importarJSON() {
+        cerrarMenus();
+        document.getElementById('input-json').value = '';
+        document.getElementById('input-json').click();
+      }
+
+      async function procesarJSON(input) {
+        const file = input.files[0];
+        if (!file) return;
+        try {
+          const texto = await file.text();
+          const datos = JSON.parse(texto);
+          if (!datos.marcadores) { toast('⚠️ JSON inválido'); return; }
+          marcadores = datos.marcadores;
+          carpetas   = datos.carpetas || [];
+          await persistir();
+          Object.keys(blobURLCache).forEach(k => delete blobURLCache[k]);
+          renderChips(); renderGrid(); actualizarIconosFaltantes();
+          toast(`✅ ${marcadores.length} marcadores importados`);
+        } catch(e) { toast('❌ Error al leer JSON: ' + e.message); }
+      }
+
+      /* ── Menús desplegables ── */
+      function toggleMenuGuardar(e) {
+        e.stopPropagation();
+        const m = document.getElementById('menu-guardar');
+        const c = document.getElementById('menu-cargar');
+        c.style.display = 'none';
+        m.style.display = m.style.display === 'none' ? 'block' : 'none';
+      }
+
+      function toggleMenuCargar(e) {
+        e.stopPropagation();
+        const m = document.getElementById('menu-cargar');
+        const g = document.getElementById('menu-guardar');
+        g.style.display = 'none';
+        m.style.display = m.style.display === 'none' ? 'block' : 'none';
+      }
+
+      function cerrarMenus() {
+        document.getElementById('menu-guardar').style.display = 'none';
+        document.getElementById('menu-cargar').style.display  = 'none';
+      }
+
+      /* ── Config Worker ── */
+      function abrirConfigWorker() {
+        const actual = CF_WORKER;
+        const nueva  = prompt('☁️ Cloudflare Worker URL:', actual);
+        if (nueva === null) return;
+        if (!nueva.trim()) { toast('⚠️ URL vacía, no se guardó'); return; }
+        const url = nueva.trim().replace(/\/$/,'');
+        CF_WORKER = url; localStorage.setItem(WORKER_KEY, url);
+        toast('✅ Worker URL actualizado');
+      }
+
+      /* ── Utilidades ── */
+      function cerrarModal(id) { document.getElementById(id).classList.remove('visible'); }
+
+      document.addEventListener('click', cerrarMenus);    
+      document.querySelectorAll('.modal-overlay').forEach(el => {
+        el.addEventListener('click', e => { if (e.target === el) el.classList.remove('visible'); });
+      });
+
+      let _toastTimer;
+      function toast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg; el.style.display = 'block';
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => el.style.display = 'none', 2800);
+      }
+
+      function mostrarSpinner(v) { document.getElementById('spinner').style.display = v ? 'block' : 'none'; }
+    </script>
+  </body>
+</html>
