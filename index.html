@@ -109,7 +109,7 @@
 
       .tarjeta {
         background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-        box-shadow: var(--shadow); padding: 12px 16px; cursor: pointer;
+        box-shadow: var(--shadow); padding: 0; cursor: pointer; 
         transition: box-shadow .15s, border-color .15s, transform .12s;
         display: flex; flex-direction: row; align-items: center;
         gap: 12px; position: relative; overflow: hidden;
@@ -140,15 +140,8 @@
         color: var(--accent); background: var(--accent-soft); border-radius: 4px;
         padding: 2px 7px; align-self: flex-start;
       }
-      .tarjeta-acciones { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
-      .tarjeta:hover .tarjeta-acciones { opacity: 1; }
-      .btn-tarjeta {
-        width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border);
-        background: var(--surface); color: var(--text-sub); cursor: pointer; font-size: 12px;
-        display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s;
-      }
-      .btn-tarjeta:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
-      .btn-tarjeta.editar:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+      
+
 
       #estado-vacio {
         display: none; flex-direction: column; align-items: center;
@@ -206,6 +199,30 @@
       @media (max-width: 480px) {
         #grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
         #topbar-logo { font-size: 15px; }
+      }
+      .tarjeta { overflow: hidden; touch-action: pan-y; }
+      .tarjeta-delete-bg {
+        position: absolute; top: 0; right: 0; bottom: 0;
+        background: var(--danger); display: flex; align-items: center;
+        justify-content: flex-end; padding: 0 20px;
+        font-size: 13px; font-weight: 600; color: #fff;
+        pointer-events: none; opacity: 0; transition: opacity .15s;
+        border-radius: var(--radius);
+      }
+      .tarjeta-edit-bg {
+        position: absolute; top: 0; left: 0; bottom: 0;
+        background: #2e9e5b; display: flex; align-items: center;
+        justify-content: flex-start; padding: 0 20px;
+        font-size: 13px; font-weight: 600; color: #fff;
+        pointer-events: none; opacity: 0; transition: opacity .15s;
+        border-radius: var(--radius);
+      }
+      .tarjeta-inner {
+        display: flex; flex-direction: row; align-items: center;
+        gap: 12px; width: 100%; position: relative; z-index: 1;
+        background: var(--surface); border-radius: var(--radius);
+        padding: 12px 16px;
+        transition: transform .2s ease; will-change: transform;
       }
     </style>
   </head>
@@ -530,7 +547,80 @@
           const dom  = dominioDe(m.url);
           const card = document.createElement('div');
           card.className = 'tarjeta';
-          card.onclick = () => window.open(m.url, '_blank', 'noopener');
+
+          // Fondo rojo de eliminación (izquierda)
+          const deleteBg = document.createElement('div');
+          deleteBg.className = 'tarjeta-delete-bg';
+          deleteBg.innerHTML = '🗑️ Eliminar';
+          card.appendChild(deleteBg);
+
+          // Fondo verde de editar (derecha)
+          const editBg = document.createElement('div');
+          editBg.className = 'tarjeta-edit-bg';
+          editBg.innerHTML = '✏️ Editar';
+          card.appendChild(editBg);
+
+          // Contenedor deslizable
+          const inner = document.createElement('div');
+          inner.className = 'tarjeta-inner';
+          inner.onclick = () => window.open(m.url, '_blank', 'noopener');
+
+          // Swipe logic
+          let startX = 0, currentX = 0, swiping = false;
+          const MAX_SWIPE = 140;
+
+          inner.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+            currentX = 0;
+            swiping = true;
+          }, { passive: true });
+
+          inner.addEventListener('touchmove', e => {
+            if (!swiping) return;
+            const dx = e.touches[0].clientX - startX;
+            if (dx < 0) {
+              // Izquierda → eliminar
+              currentX = Math.max(dx, -MAX_SWIPE);
+              inner.style.transform = `translateX(${currentX}px)`;
+              deleteBg.style.opacity = Math.abs(currentX) / MAX_SWIPE;
+              editBg.style.opacity = '0';
+            } else {
+              // Derecha → editar
+              currentX = Math.min(dx, MAX_SWIPE);
+              inner.style.transform = `translateX(${currentX}px)`;
+              editBg.style.opacity = currentX / MAX_SWIPE;
+              deleteBg.style.opacity = '0';
+            }
+          }, { passive: true });
+
+          inner.addEventListener('touchend', () => {
+            swiping = false;
+            if (currentX <= -MAX_SWIPE * 0.75) {
+              // Eliminar
+              inner.style.transform = `translateX(-${MAX_SWIPE}px)`;
+              setTimeout(async () => {
+                card.style.transition = 'height .2s ease, opacity .2s ease, margin .2s ease';
+                card.style.height = card.offsetHeight + 'px';
+                requestAnimationFrame(() => {
+                  card.style.height = '0';
+                  card.style.opacity = '0';
+                  card.style.marginBottom = '0';
+                });
+                setTimeout(async () => { await eliminarMarcador(m.id); }, 220);
+              }, 100);
+            } else if (currentX >= MAX_SWIPE * 0.75) {
+              // Editar
+              inner.style.transform = 'translateX(0)';
+              editBg.style.opacity = '0';
+              abrirModalEditar(m.id);
+            } else {
+              // Cancelar — volver
+              inner.style.transform = 'translateX(0)';
+              deleteBg.style.opacity = '0';
+              editBg.style.opacity = '0';
+            }
+            currentX = 0;
+          });
 
           const top = document.createElement('div');
           top.className = 'tarjeta-top';
@@ -548,7 +638,7 @@
             top.appendChild(crearFallback(dom));
           }
 
-          card.appendChild(top);
+          inner.appendChild(top);
 
           const info = document.createElement('div');
           info.className = 'tarjeta-info';
@@ -563,25 +653,17 @@
           urlEl.textContent = dom || m.url;
           info.appendChild(urlEl);
 
-          card.appendChild(info);
+          inner.appendChild(info);
 
           if (m.carpeta) {
             const badge = document.createElement('div');
             badge.className = 'tarjeta-carpeta';
             badge.textContent = '📁 ' + m.carpeta;
-            card.appendChild(badge);
+            inner.appendChild(badge);
           }
 
-          const acc = document.createElement('div');
-          acc.className = 'tarjeta-acciones';
-          const btnEdit = document.createElement('button');
-          btnEdit.className = 'btn-tarjeta editar'; btnEdit.title = 'Editar'; btnEdit.textContent = '✏️';
-          btnEdit.onclick = e => { e.stopPropagation(); abrirModalEditar(m.id); };
-          const btnDel = document.createElement('button');
-          btnDel.className = 'btn-tarjeta'; btnDel.title = 'Eliminar'; btnDel.textContent = '✕';
-          btnDel.onclick = e => { e.stopPropagation(); eliminarMarcador(m.id); };
-          acc.appendChild(btnEdit); acc.appendChild(btnDel);
-          card.appendChild(acc);
+          // acciones eliminadas — swipe reemplaza editar y eliminar
+          card.appendChild(inner);
           grid.appendChild(card);
         });
       }
