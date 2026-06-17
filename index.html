@@ -241,7 +241,7 @@
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
       <input id="busqueda" type="text" placeholder="Buscar marcadores…" oninput="filtrar()"
-       onkeydown="if(event.key==='Enter' && this.value.trim()) window.open('https://www.google.com/search?q='+encodeURIComponent(this.value.trim()),'_blank','noopener')">
+             onkeydown="if(event.key==='Enter' && this.value.trim()) window.open('https://www.google.com/search?q='+encodeURIComponent(this.value.trim()),'_blank','noopener')">
     </div>
 
     <div id="chips-wrap">
@@ -505,12 +505,14 @@
       /* ── Grid ── */
       function marcadoresFiltrados() {
         const q = document.getElementById('busqueda').value.trim().toLowerCase();
-        return marcadores.filter(m => {
+        return marcadores
+          .filter(m => {
           const enCarpeta = carpetaActiva === '__todas__' || m.carpeta === carpetaActiva;
           if (!enCarpeta) return false;
           if (!q) return true;
           return (m.titulo + ' ' + m.url).toLowerCase().includes(q);
-        });
+        })
+          .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'es', { numeric: true, sensitivity: 'base' }));
       }
 
       function renderGrid() {
@@ -627,27 +629,30 @@
         });
       }
 
-      let _autoTimer = null;
-      function autocompletarTitulo() {
-        clearTimeout(_autoTimer);
-        _autoTimer = setTimeout(() => {
-          const urlRaw = document.getElementById('input-url').value.trim();
-          if (!urlRaw) return;
-          if (document.getElementById('input-titulo').value) return;
+      function autocompletarTitulo() {    
+        const urlRaw = document.getElementById('input-url').value.trim();
+        if (!urlRaw) return;
+        if (document.getElementById('input-titulo').value) return;
+        const url = urlRaw.startsWith('http') ? urlRaw : 'https://' + urlRaw;
+
+        // Fallback: unir los últimos dos segmentos de la URL
+        const fallback = () => {
           try {
-            const parsed = new URL(urlRaw.startsWith('http') ? urlRaw : 'https://' + urlRaw);
-            // Si tiene path con segmentos (ej: /PerfectView/) usar el primer segmento
+            const parsed = new URL(url);
             const segmentos = parsed.pathname.split('/').filter(s => s.length > 0);
-            if (segmentos.length > 0) {
-              document.getElementById('input-titulo').value = segmentos[0];
-            } else {
-              // Sin path → usar dominio limpio
-              document.getElementById('input-titulo').value =
-                parsed.hostname.replace(/^www\./,'').replace(/\.\w+$/,'')
-                .split('.').map(p => p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
+            if (segmentos.length >= 2) {
+              // Tomar los últimos dos segmentos y unirlos
+              const ultimos = segmentos.slice(-2).join(' ');
+              return ultimos.replace(/[-_]/g, ' ').trim();
+            } else if (segmentos.length === 1) {
+              return segmentos[0].replace(/[-_]/g, ' ').trim();
             }
-          } catch(e) {}
-        }, 600);
+            return parsed.hostname;
+          } catch { return ''; }
+        };
+
+        document.getElementById('input-titulo').value = fallback();
+        document.getElementById('input-titulo').placeholder = 'Nombre del sitio';        
       }
 
       async function guardarMarcador() {
