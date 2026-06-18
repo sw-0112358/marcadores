@@ -140,7 +140,7 @@
         color: var(--accent); background: var(--accent-soft); border-radius: 4px;
         padding: 2px 7px; align-self: flex-start;
       }
-      
+
 
 
       #estado-vacio {
@@ -158,12 +158,26 @@
       .modal-box {
         background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-md);
         width: 100%; max-width: 420px; display: flex; flex-direction: column; overflow: hidden;
-        animation: slideUp .2s ease;
+        animation: slideUp .2s ease; max-height: 88vh;
+      }
+      .modal-body { overflow-y: auto; }
+      #modal-boveda .modal-box {
+        max-height: 80vh; height: auto;
+      }
+      #modal-boveda .modal-body {
+        flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0;
+        max-height: calc(80vh - 60px);
+      }
+      #boveda-items-scroll {
+        flex: 1; overflow-y: auto; padding-bottom: 8px;
+      }
+      #boveda-footer {
+        flex-shrink: 0; padding-top: 10px; border-top: 1px solid var(--border);
       }
       @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
       .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
       .modal-header strong { font-size: 14px; font-weight: 600; }
-      .modal-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      .modal-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
       .modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
       .campo { display: flex; flex-direction: column; gap: 5px; }
       .campo label { font-size: 11.5px; font-weight: 600; color: var(--text-sub); }
@@ -224,6 +238,60 @@
         padding: 12px 16px;
         transition: transform .2s ease; will-change: transform;
       }
+
+      /* ── BÓVEDA ── */
+      .boveda-seccion { margin-bottom: 18px; }
+      .boveda-seccion-titulo {
+        font-size: 11px; font-weight: 700; color: var(--text-hint);
+        text-transform: uppercase; letter-spacing: .06em;
+        margin-bottom: 8px; padding: 0 2px;
+      }
+      .boveda-item {
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: var(--radius-sm); padding: 10px 14px;
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 6px; cursor: pointer;
+        transition: border-color .13s, background .13s;
+      }
+      .boveda-item:hover { border-color: var(--accent); background: var(--accent-soft); }
+      .boveda-item-icon { font-size: 20px; flex-shrink: 0; }
+      .boveda-item-info { flex: 1; overflow: hidden; }
+      .boveda-item-nombre { font-size: 13px; font-weight: 600; color: var(--text); }
+      .boveda-item-sub { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+      .boveda-campo-valor {
+        font-family: monospace; background: var(--surface);
+        border: 1px solid var(--border); border-radius: var(--radius-xs);
+        padding: 6px 10px; font-size: 13px; color: var(--text);
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; margin-top: 4px;
+      }
+      .boveda-campo-valor span { flex: 1; letter-spacing: .08em; }
+      .boveda-campo-valor span.nota-contenido {
+        white-space: pre-wrap; letter-spacing: 0; line-height: 1.6;
+        max-height: calc(70vh - 160px); overflow-y: auto; font-family: Inter, sans-serif;
+      }
+      .boveda-pin-wrap {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 14px; padding: 10px 0;
+      }
+      .boveda-pin-wrap p { font-size: 13px; color: var(--text-sub); text-align: center; }
+      .boveda-pin-input {
+        width: 100%; padding: 10px 14px; border: 2px solid var(--border);
+        border-radius: var(--radius-sm); font-size: 18px; text-align: center;
+        letter-spacing: .2em; font-family: monospace;
+        background: var(--surface-2); color: var(--text); outline: none;
+        transition: border-color .15s;
+      }
+      .boveda-pin-input:focus { border-color: var(--accent); }
+      .boveda-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+      .boveda-tipo-btn {
+        flex: 1; padding: 8px; border-radius: var(--radius-sm);
+        border: 1px solid var(--border); background: var(--surface-2);
+        font-size: 12px; cursor: pointer; text-align: center;
+        transition: background .13s, border-color .13s;
+      }
+      .boveda-tipo-btn.activo { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
     </style>
   </head>
   <body>
@@ -248,6 +316,8 @@
         <input type="file" id="input-json" accept=".json" style="display:none" onchange="procesarJSON(this)">
 
         <button class="btn-icon" title="Worker URL" onclick="abrirConfigWorker()">⚙️</button>
+        <button class="btn-icon" title="Bóveda" onclick="abrirBoveda()">🔒</button>
+        <input type="file" id="input-gpass" accept=".csv" style="display:none" onchange="procesarCSVGoogle(this)">
         <button class="btn-icon accent" title="Agregar marcador" onclick="abrirModalAgregar()">+</button>
       </div>
     </div>
@@ -319,6 +389,42 @@
       </div>
     </div>
 
+    <!-- MODAL BÓVEDA -->
+    <div class="modal-overlay" id="modal-boveda">
+      <div class="modal-box" style="max-width:480px;">
+        <div class="modal-header">
+          <strong id="boveda-titulo">🔒 Bóveda</strong>
+          <button class="btn-icon" onclick="cerrarBoveda()">✕</button>
+        </div>
+        <div id="boveda-search-wrap" style="display:none;padding:8px 16px;border-bottom:1px solid var(--border);">
+          <input id="boveda-search" type="text" placeholder="Buscar en bóveda…"
+                 style="width:100%;padding:7px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:Inter,sans-serif;font-size:13px;background:var(--surface-2);color:var(--text);outline:none;box-sizing:border-box;"
+                 onkeydown="if(event.key==='Enter') bovedaBuscar(this.value.trim())"
+                 oninput="if(!this.value.trim()) bovedaBuscar('')">
+        </div>
+        <div class="modal-body" id="boveda-body">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL ITEM BÓVEDA -->
+    <div class="modal-overlay" id="modal-boveda-item">
+      <div class="modal-box" style="max-width:480px;">
+        <div class="modal-header">
+          <strong id="boveda-item-titulo">Nuevo item</strong>
+          <button class="btn-icon" onclick="cerrarModal('modal-boveda-item')">✕</button>
+        </div>
+        <div class="modal-body" id="boveda-item-body">
+          <!-- Se llena dinámicamente -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="cerrarModal('modal-boveda-item')">Cancelar</button>
+          <button class="btn primary" onclick="bovedaGuardarItem()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
     <div id="toast"></div>
     <div id="spinner">⏳ Cargando íconos…</div>
 
@@ -336,7 +442,7 @@
 
       /* ── IndexedDB ── */
       const DB_NAME    = 'MarcadoresDB';
-      const DB_VERSION = 2;
+      const DB_VERSION = 3;
       let db = null;
 
       function abrirDB() {
@@ -346,6 +452,7 @@
             const d = e.target.result;
             if (!d.objectStoreNames.contains('datos'))  d.createObjectStore('datos',  { keyPath: 'clave' });
             if (!d.objectStoreNames.contains('iconos')) d.createObjectStore('iconos', { keyPath: 'url' });
+            if (!d.objectStoreNames.contains('boveda')) d.createObjectStore('boveda', { keyPath: 'clave' });
           };
           req.onsuccess = e => { db = e.target.result; resolve(db); };
           req.onerror   = e => reject(e.target.error);
@@ -943,6 +1050,750 @@
       }
 
       function mostrarSpinner(v) { document.getElementById('spinner').style.display = v ? 'block' : 'none'; }
+
+      /* ══════════════════════════════
+         BÓVEDA — AES-GCM 256-bit
+      ══════════════════════════════ */
+      let _bovedaKey    = null; // CryptoKey activa en sesión
+      let _bovedaTipo   = 'contrasena'; // tipo seleccionado al agregar
+      let _bovedaFiltro  = localStorage.getItem('_boveda_filtro_inicio') || '__todas__';
+      let _bovedaBusqueda = '';
+
+      // ── Crypto helpers ──
+      async function derivarClave(password, salt) {
+        const enc  = new TextEncoder();
+        const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+        return crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+          base,
+          { name: 'AES-GCM', length: 256 },
+          false, ['encrypt', 'decrypt']
+        );
+      }
+
+      async function cifrar(key, datos) {
+        const iv  = crypto.getRandomValues(new Uint8Array(12));
+        const enc = new TextEncoder();
+        const buf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(datos)));
+        return { iv: Array.from(iv), buf: Array.from(new Uint8Array(buf)) };
+      }
+
+      async function descifrar(key, iv, buf) {
+        const dec = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: new Uint8Array(iv) },
+          key, new Uint8Array(buf)
+        );
+        return JSON.parse(new TextDecoder().decode(dec));
+      }
+
+      // ── IndexedDB bóveda ──
+      async function bovedaGetMeta() {
+        // meta: { clave:'meta', salt, verificador_iv, verificador_buf }
+        return dbGet('boveda', 'meta');
+      }
+
+      async function bovedaGetItems() {
+        return dbGet('boveda', 'items');
+      }
+
+      async function bovedaGuardarCifrado(key, items) {
+        const cifrado = await cifrar(key, items);
+        await dbPut('boveda', { clave: 'items', ...cifrado });
+      }
+
+      // ── Flujo principal ──
+      async function abrirBoveda() {
+        cerrarMenus();
+        // Restaurar filtro fijado al abrir
+        _bovedaFiltro = localStorage.getItem('_boveda_filtro_inicio') || '__todas__';
+        const meta = await bovedaGetMeta();
+        const body = document.getElementById('boveda-body');
+        document.getElementById('boveda-search-wrap').style.display = 'none';
+        _bovedaBusqueda = '';
+        if (!meta) {
+          body.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.className = 'boveda-pin-wrap';
+          wrap.innerHTML = `
+            <p>🔒 Crea tu <strong>contraseña maestra</strong> para proteger tus datos.</p>
+            <input class="boveda-pin-input" id="boveda-pin1" type="password" placeholder="Contraseña maestra">
+            <input class="boveda-pin-input" id="boveda-pin2" type="password" placeholder="Repite la contraseña">
+            <button class="btn primary" style="width:100%" onclick="bovedaCrearMaestra()">✅ Crear bóveda</button>`;
+          body.appendChild(wrap);
+        } else if (!_bovedaKey) {
+          // Pedir contraseña
+          body.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.className = 'boveda-pin-wrap';
+          wrap.innerHTML = `
+            <p>🔐 Ingresa tu <strong>contraseña maestra</strong></p>
+            <input class="boveda-pin-input" id="boveda-pin-unlock" type="password" placeholder="Contraseña maestra"
+                   onkeydown="if(event.key==='Enter') bovedaDesbloquear()">
+            <button class="btn primary" style="width:100%" onclick="bovedaDesbloquear()">🔓 Desbloquear</button>`;
+          body.appendChild(wrap);
+        } else {
+          // Ya desbloqueada — mostrar contenido
+          await bovedaMostrarContenido();
+        }
+        document.getElementById('modal-boveda').classList.add('visible');
+        setTimeout(() => {
+          const inp = document.getElementById('boveda-pin1') ||
+                document.getElementById('boveda-pin-unlock');
+          if (inp) inp.focus();
+        }, 120);
+      }
+
+      async function bovedaCrearMaestra() {
+        const p1 = document.getElementById('boveda-pin1').value;
+        const p2 = document.getElementById('boveda-pin2').value;
+        if (!p1) { toast('⚠️ Ingresa una contraseña'); return; }
+        if (p1 !== p2) { toast('⚠️ Las contraseñas no coinciden'); return; }
+        if (p1.length < 4) { toast('⚠️ Mínimo 4 caracteres'); return; }
+
+        const salt  = crypto.getRandomValues(new Uint8Array(16));
+        const key   = await derivarClave(p1, salt);
+        // Guardar verificador cifrado (texto conocido)
+        const ver   = await cifrar(key, { ok: true });
+        await dbPut('boveda', {
+          clave: 'meta',
+          salt:  Array.from(salt),
+          verificador_iv:  ver.iv,
+          verificador_buf: ver.buf
+        });
+        // Items vacíos iniciales
+        await bovedaGuardarCifrado(key, []);
+        _bovedaKey = key;
+        toast('🔒 Bóveda creada');
+        await bovedaMostrarContenido();
+      }
+
+      async function bovedaDesbloquear() {
+        const pin  = document.getElementById('boveda-pin-unlock').value;
+        if (!pin) { toast('⚠️ Ingresa la contraseña'); return; }
+        const meta = await bovedaGetMeta();
+        try {
+          const key = await derivarClave(pin, new Uint8Array(meta.salt));
+          // Verificar con el verificador
+          await descifrar(key, meta.verificador_iv, meta.verificador_buf);
+          _bovedaKey = key;
+          toast('🔓 Bóveda desbloqueada');
+          await bovedaMostrarContenido();
+        } catch(e) {
+          toast('❌ Contraseña incorrecta');
+          document.getElementById('boveda-pin-unlock').value = '';
+          document.getElementById('boveda-pin-unlock').focus();
+        }
+      }
+
+      async function bovedaMostrarContenido() {
+        const body = document.getElementById('boveda-body');
+        body.innerHTML = '';
+        document.getElementById('boveda-titulo').textContent = '🔒 Bóveda';
+        document.getElementById('boveda-search-wrap').style.display = 'block';
+        document.getElementById('boveda-search').value = _bovedaBusqueda;
+
+        // Botón agregar + mini menú desplegable
+        const acc = document.createElement('div');
+        acc.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:12px;';
+
+        // Chips de filtro
+        const chipsWrap = document.createElement('div');
+        chipsWrap.style.cssText = 'display:flex;gap:6px;flex:1;overflow-x:auto;scrollbar-width:none;';
+        const filtros = [['__todas__','Todas'],['contrasena','🔑'],['tarjeta','💳'],['nota','📝']];
+        const fijada = localStorage.getItem('_boveda_filtro_inicio');
+        filtros.forEach(([val, label]) => {
+          const esFijada = val === fijada;
+          const chip = document.createElement('div');
+          chip.style.cssText = `flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;
+            border:1px solid var(--border);background:${val===_bovedaFiltro?'var(--accent)':'var(--surface-2)'};
+            color:${val===_bovedaFiltro?'#fff':'var(--text-sub)'};cursor:pointer;white-space:nowrap;
+            transition:background .13s,color .13s;`;
+          chip.textContent = (esFijada ? '📌 ' : '') + label;
+          chip.title = 'Doble clic para fijar como inicio';
+          let _clickTimer = null;
+          chip.addEventListener('click', () => {
+            clearTimeout(_clickTimer);
+            _clickTimer = setTimeout(() => {
+              _bovedaFiltro = val;
+              bovedaMostrarContenido();
+            }, 220);
+          });
+          chip.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            clearTimeout(_clickTimer); // cancelar el click simple
+            if (fijada === val) {
+              localStorage.removeItem('_boveda_filtro_inicio');
+              toast('📌 Fijación eliminada');
+            } else {
+              localStorage.setItem('_boveda_filtro_inicio', val);
+              toast('📌 Categoría fijada como inicio');
+            }
+            bovedaMostrarContenido();
+          });
+          chipsWrap.appendChild(chip);
+        });
+        acc.appendChild(chipsWrap);
+
+        // Botón + con mini menú
+        const btnMas = document.createElement('div');
+        btnMas.style.cssText = 'position:relative;flex-shrink:0;';
+        const btnAdd = document.createElement('button');
+        btnAdd.className = 'btn-icon accent';
+        btnAdd.textContent = '+';
+        btnAdd.title = 'Agregar';
+        btnAdd.onclick = (e) => {
+          e.stopPropagation();
+          const menu = btnMas.querySelector('.boveda-add-menu');
+          menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        };
+        const miniMenu = document.createElement('div');
+        miniMenu.className = 'boveda-add-menu';
+        miniMenu.style.cssText = 'display:none;position:absolute;top:42px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:300;min-width:150px;overflow:hidden;';
+        [['contrasena','🔑 Contraseña'],['tarjeta','💳 Tarjeta'],['nota','📝 Nota']].forEach(([tipo, label]) => {
+          const op = document.createElement('div');
+          op.style.cssText = 'padding:10px 14px;font-size:12.5px;cursor:pointer;transition:background .12s;';
+          op.textContent = label;
+          op.onmouseover = () => op.style.background = 'var(--surface-2)';
+          op.onmouseout  = () => op.style.background = '';
+          op.onclick = () => { miniMenu.style.display = 'none'; bovedaAbrirAgregar(tipo); };
+          miniMenu.appendChild(op);
+        });
+        btnMas.appendChild(btnAdd);
+        btnMas.appendChild(miniMenu);
+        acc.appendChild(btnMas);
+        body.appendChild(acc);
+
+        // Cerrar mini menú al click fuera
+        setTimeout(() => {
+          document.addEventListener('click', function cerrarMenu() {
+            miniMenu.style.display = 'none';
+            document.removeEventListener('click', cerrarMenu);
+          }, { once: true });
+        }, 0);
+
+        // Cargar items
+        const enc = await bovedaGetItems();
+        let items = [];
+        if (enc && enc.buf) {
+          try { items = await descifrar(_bovedaKey, enc.iv, enc.buf); } catch(e) {}
+        }
+
+        // Contenedor scrollable para items
+        const itemsScroll = document.createElement('div');
+        itemsScroll.id = 'boveda-items-scroll';
+
+        if (!items.length) {
+          const vacio = document.createElement('div');
+          vacio.style.cssText = 'text-align:center;color:var(--text-hint);font-size:13px;padding:30px 0;';
+          vacio.textContent = 'Sin items. Agrega tu primera contraseña o tarjeta.';
+          itemsScroll.appendChild(vacio);
+          body.appendChild(itemsScroll);
+        } else {
+        // Agrupar por tipo
+        const grupos = { contrasena: '🔑 Contraseñas', tarjeta: '💳 Tarjetas', nota: '📝 Notas' };
+        for (const [tipo, label] of Object.entries(grupos)) {
+          if (_bovedaFiltro !== '__todas__' && _bovedaFiltro !== tipo) continue;
+          const q = _bovedaBusqueda.toLowerCase();
+          const grupo = items
+            .filter(x => x.tipo === tipo && (
+              !q ||
+              (x.nombre      || '').toLowerCase().includes(q) ||
+              (x.usuario     || '').toLowerCase().includes(q) ||
+              (x.url         || '').toLowerCase().includes(q) ||
+              (x.titular     || '').toLowerCase().includes(q) ||
+              (x.banco       || '').toLowerCase().includes(q) ||
+              (x.notas       || '').toLowerCase().includes(q) ||
+              (x.contenido   || '').toLowerCase().includes(q)
+            ))
+            .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { numeric: true, sensitivity: 'base' }));
+          if (!grupo.length) continue;
+          const sec = document.createElement('div');
+          sec.className = 'boveda-seccion';
+          const tit = document.createElement('div');
+          tit.className = 'boveda-seccion-titulo';
+          tit.textContent = label;
+          sec.appendChild(tit);
+          grupo.forEach(item => sec.appendChild(crearTarjetaBoveda(item)));
+          itemsScroll.appendChild(sec);
+        }
+        body.appendChild(itemsScroll);
+        }
+
+        // Footer fijo
+        const footerWrap = document.createElement('div');
+        footerWrap.id = 'boveda-footer';
+        const footerRow = document.createElement('div');
+        footerRow.style.cssText = 'display:flex;gap:8px;';
+
+        // Menú Google Passwords
+        const gpassWrap = document.createElement('div');
+        gpassWrap.style.cssText = 'position:relative;flex:1;';
+        const btnGpass = document.createElement('button');
+        btnGpass.className = 'btn';
+        btnGpass.style.cssText = 'width:100%;font-size:12px;';
+        btnGpass.textContent = '🔑 Google CSV';
+        btnGpass.onclick = (e) => {
+          e.stopPropagation();
+          const m = gpassWrap.querySelector('.gpass-menu');
+          m.style.display = m.style.display === 'none' ? 'block' : 'none';
+        };
+        const gpassMenu = document.createElement('div');
+        gpassMenu.className = 'gpass-menu';
+        gpassMenu.style.cssText = 'display:none;position:absolute;bottom:42px;left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:300;min-width:170px;overflow:hidden;';
+        [['📤 Exportar a Google', exportarGooglePasswords],
+         ['📥 Importar de Google', importarGooglePasswords]].forEach(([label, fn]) => {
+          const op = document.createElement('div');
+          op.style.cssText = 'padding:10px 14px;font-size:12.5px;cursor:pointer;transition:background .12s;';
+          op.textContent = label;
+          op.onmouseover = () => op.style.background = 'var(--surface-2)';
+          op.onmouseout  = () => op.style.background = '';
+          op.onclick     = () => { gpassMenu.style.display = 'none'; fn(); };
+          gpassMenu.appendChild(op);
+        });
+        gpassWrap.appendChild(btnGpass);
+        gpassWrap.appendChild(gpassMenu);
+        footerRow.appendChild(gpassWrap);
+
+        // Botón bloquear
+        const btnLock = document.createElement('button');
+        btnLock.className = 'btn danger';
+        btnLock.style.cssText = 'flex:1;font-size:12px;';
+        btnLock.textContent = '🔒 Bloquear';
+        btnLock.onclick = () => { _bovedaKey = null; cerrarBoveda(); toast('🔒 Bóveda bloqueada'); };
+        footerRow.appendChild(btnLock);
+
+        footerWrap.appendChild(footerRow);
+        body.appendChild(footerWrap);
+      }
+
+      function crearTarjetaBoveda(item) {
+        const icono = item.tipo === 'contrasena' ? '🔑' : item.tipo === 'tarjeta' ? '💳' : '📝';
+        const sub   = item.tipo === 'contrasena' ? (item.usuario || '—')
+        : item.tipo === 'tarjeta'    ? ('**** ' + (item.numero || '').slice(-4))
+        : (item.contenido || '').substring(0, 30) + '…';
+
+        // Wrapper swipe
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:relative;border-radius:var(--radius-sm);margin-bottom:6px;';
+
+        // Fondo verde — editar (derecha)
+        const editBg = document.createElement('div');
+        editBg.style.cssText = 'position:absolute;inset:0;border-radius:var(--radius-sm);background:#2e9e5b;display:flex;align-items:center;justify-content:flex-start;padding:0 18px;font-size:13px;font-weight:600;color:#fff;opacity:0;pointer-events:none;z-index:0;transition:opacity .1s;';
+        editBg.textContent = '✏️ Editar';
+        wrapper.appendChild(editBg);
+
+        // Fondo rojo — eliminar (izquierda)
+        const delBg = document.createElement('div');
+        delBg.style.cssText = 'position:absolute;inset:0;border-radius:var(--radius-sm);background:#e03e3e;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;font-size:13px;font-weight:600;color:#fff;opacity:0;pointer-events:none;z-index:0;transition:opacity .1s;';
+        delBg.textContent = '🗑️ Eliminar';
+        wrapper.appendChild(delBg);
+
+        // Item principal
+        const el = document.createElement('div');
+        el.className = 'boveda-item';
+        el.style.cssText = 'position:relative;z-index:1;will-change:transform;touch-action:pan-y;margin-bottom:0;';
+        el.innerHTML = `
+          <div class="boveda-item-icon">${icono}</div>
+          <div class="boveda-item-info">
+            <div class="boveda-item-nombre">${item.nombre}</div>
+            <div class="boveda-item-sub">${sub}</div>
+      </div>`;
+        el.onclick = () => bovedaVerItem(item);
+
+        // Swipe logic
+        let startX = 0, curX = 0, swiping = false;
+        const MAX = 110;
+
+        el.addEventListener('touchstart', e => {
+          startX = e.touches[0].clientX; curX = 0; swiping = true;
+          el.style.transition = '';
+        }, { passive: true });
+
+        el.addEventListener('touchmove', e => {
+          if (!swiping) return;
+          const dx = e.touches[0].clientX - startX;
+          if (dx > 0) {
+            curX = Math.min(dx, MAX);
+            el.style.transform = `translateX(${curX}px)`;
+            editBg.style.opacity = curX / MAX;
+            delBg.style.opacity  = '0';
+          } else {
+            curX = Math.max(dx, -MAX);
+            el.style.transform = `translateX(${curX}px)`;
+            delBg.style.opacity  = Math.abs(curX) / MAX;
+            editBg.style.opacity = '0';
+          }
+        }, { passive: true });
+
+        el.addEventListener('touchend', () => {
+          swiping = false;
+          const activado = curX;
+          curX = 0;
+          el.style.transition = 'transform .2s ease';
+          el.style.transform  = 'translateX(0)';
+          editBg.style.opacity = '0';
+          delBg.style.opacity  = '0';
+          setTimeout(() => { el.style.transition = ''; }, 220);
+
+          if (activado >= MAX * 0.72) {
+            bovedaAbrirEditar(item);
+          } else if (activado <= -MAX * 0.72) {
+            bovedaEliminar(item.id);
+          }
+        });
+
+        wrapper.appendChild(el);
+        return wrapper;
+      }
+
+      function bovedaVerItem(item) {
+        const body = document.getElementById('boveda-item-body');
+        const titulo = document.getElementById('boveda-item-titulo');
+        body.innerHTML = '';
+
+        const icono = item.tipo === 'contrasena' ? '🔑' : item.tipo === 'tarjeta' ? '💳' : '📝';
+        titulo.textContent = icono + ' ' + item.nombre;
+
+        const campos = item.tipo === 'contrasena'
+        ? [ ['Usuario', item.usuario], ['Contraseña', item.contrasena], ['URL', item.url], ['Notas', item.notas] ]
+        : item.tipo === 'tarjeta'
+        ? [ ['Title', item.nombre], ['Titular', item.titular], ['Número', item.numero], ['Vencimiento', item.vencimiento], ['CVV', item.cvv], ['PIN', item.pin], ['Notas', item.notas] ]
+        : [ ['Contenido', item.contenido] ];
+
+        campos.forEach(([label, val]) => {
+          if (!val) return;
+          const grupo = document.createElement('div');
+          grupo.className = 'campo';
+          grupo.style.marginBottom = '10px';
+          const lbl = document.createElement('label');
+          lbl.textContent = label;
+          const valWrap = document.createElement('div');
+          valWrap.className = 'boveda-campo-valor';
+          const span = document.createElement('span');
+          // Ocultar contraseñas/CVV/PIN por defecto
+          const esSensible = ['Contraseña','CVV','PIN'].includes(label);
+          if (label === 'Contenido') span.className = 'nota-contenido';
+          span.textContent = esSensible ? '••••••••' : val;
+          span.dataset.real = val;
+          span.dataset.oculto = esSensible ? '1' : '0';
+          const btnOjo = document.createElement('button');
+          btnOjo.style.cssText = 'background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;';
+          btnOjo.textContent = esSensible ? '👁' : '📋';
+          btnOjo.title = esSensible ? 'Mostrar/ocultar' : 'Copiar';
+          btnOjo.onclick = () => {
+            if (esSensible) {
+              const oculto = span.dataset.oculto === '1';
+              span.textContent = oculto ? span.dataset.real : '••••••••';
+              span.dataset.oculto = oculto ? '0' : '1';
+              btnOjo.textContent = oculto ? '🙈' : '👁';
+            } else {
+              // Número de tarjeta: copiar solo dígitos
+              const toCopy = label === 'Número' ? val.replace(/\D/g,'') : val;
+              navigator.clipboard.writeText(toCopy).then(() => { btnOjo.textContent = '✅'; setTimeout(() => btnOjo.textContent = '📋', 1500); });
+            }
+          };
+          valWrap.appendChild(span);
+          valWrap.appendChild(btnOjo);
+          grupo.appendChild(lbl);
+          grupo.appendChild(valWrap);
+          body.appendChild(grupo);
+        });
+
+        // Ocultar footer de guardar (solo ver)
+        const eNota = item.tipo === 'nota';
+        document.getElementById('modal-boveda-item').style.setProperty('--boveda-item-h', eNota ? '70vh' : 'auto');
+        document.querySelector('#modal-boveda-item .modal-box').style.maxHeight = eNota ? '70vh' : '88vh';
+        document.querySelector('#modal-boveda-item .modal-body').style.flex = eNota ? '1' : '';
+        document.querySelector('#modal-boveda-item .modal-body').style.overflowY = 'auto';
+        if (eNota) {
+          // Hacer el textarea de contenido más grande en vista
+          setTimeout(() => {
+            const ta = body.querySelector('.boveda-campo-valor span');
+            if (ta) ta.style.whiteSpace = 'pre-wrap';
+          }, 50);
+        }
+        document.querySelector('#modal-boveda-item .modal-footer').style.display = 'none';
+        document.getElementById('modal-boveda-item').classList.add('visible');
+      }
+
+      function bovedaAbrirAgregar(tipo) {
+        _bovedaTipo = tipo;
+        const body  = document.getElementById('boveda-item-body');
+        const titulo = document.getElementById('boveda-item-titulo');
+        body.innerHTML = '';
+        document.querySelector('#modal-boveda-item .modal-footer').style.display = 'flex';
+
+        if (tipo === 'contrasena') {
+          titulo.textContent = '🔑 Nueva contraseña';
+          body.innerHTML = `
+            <div class="campo"><label>Nombre del sitio</label><input id="bv-nombre" class="campo input" type="text" placeholder="Ej: Gmail"></div>
+            <div class="campo"><label>URL</label><input id="bv-url" type="text" placeholder="https://…"></div>
+            <div class="campo"><label>Usuario</label><input id="bv-usuario" type="text" placeholder="usuario@email.com"></div>
+            <div class="campo"><label>Contraseña</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input id="bv-contrasena" type="password" placeholder="••••••••" style="flex:1;">
+                <button type="button" id="bv-ojo-contrasena" style="background:none;border:1px solid var(--border);border-radius:var(--radius-xs);padding:6px 8px;cursor:pointer;font-size:14px;flex-shrink:0;" onclick="
+                  const inp = document.getElementById('bv-contrasena');
+                  const btn = document.getElementById('bv-ojo-contrasena');
+                  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+                  else { inp.type = 'password'; btn.textContent = '👁'; }
+                ">👁</button>
+              </div>
+            </div>
+            <div class="campo"><label>Notas</label><input id="bv-notas" type="text" placeholder="Opcional"></div>`;
+        } else if (tipo === 'tarjeta') {
+          titulo.textContent = '💳 Nueva tarjeta';
+          body.innerHTML = `
+            <div class="campo"><label>Nombre / Banco</label><input id="bv-nombre" type="text" placeholder="Ej: Agrícola Visa"></div>
+            <div class="campo"><label>Titular</label><input id="bv-titular" type="text" placeholder="Nombre en la tarjeta"></div>
+            <div class="campo"><label>Número de tarjeta</label><input id="bv-numero" type="text" placeholder="**** **** **** ****" maxlength="22"></div>
+            <div class="campo"><label>Vencimiento</label>
+              <div style="display:flex;gap:8px;">
+                <input id="bv-mes" type="text" placeholder="MM" maxlength="2" style="width:70px;text-align:center;" oninput="this.value=this.value.replace(/\D/g,'');if(this.value.length===2)document.getElementById('bv-anio').focus()">
+                <span style="align-self:center;color:var(--text-hint);font-size:18px;font-weight:300;">/</span>
+                <input id="bv-anio" type="text" placeholder="AA" maxlength="2" style="width:70px;text-align:center;" oninput="this.value=this.value.replace(/\D/g,'')">
+      </div>
+      </div>
+            <div class="campo"><label>CVV</label><input id="bv-cvv" type="password" placeholder="•••" maxlength="4"></div>
+            <div class="campo"><label>PIN</label><input id="bv-pin" type="password" placeholder="••••" maxlength="6"></div>
+            <div class="campo"><label>Notas</label><input id="bv-notas" type="text" placeholder="Opcional"></div>`;
+        } else {
+          titulo.textContent = '📝 Nueva nota';
+          body.innerHTML = `
+            <div class="campo"><label>Título</label><input id="bv-nombre" type="text" placeholder="Título de la nota"></div>
+            <div class="campo"><label>Contenido</label><textarea id="bv-contenido" style="min-height:220px;resize:vertical;width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:Inter,sans-serif;font-size:13px;color:var(--text);background:var(--surface-2);outline:none;box-sizing:border-box;" placeholder="Escribe tu nota segura…"></textarea></div>`;
+        }
+
+        // Aplicar estilos a los campos generados
+        body.querySelectorAll('input, textarea').forEach(el => {
+          if (el.id === 'bv-ojo-contrasena') return;
+          const esPequeno  = ['bv-mes','bv-anio'].includes(el.id);
+          const esContenido = el.id === 'bv-contenido';
+          el.style.cssText = `${esPequeno ? '' : 'width:100%;'}padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:Inter,sans-serif;font-size:13px;color:var(--text);background:var(--surface-2);outline:none;box-sizing:border-box;${esContenido ? 'min-height:calc(50vh - 80px);resize:vertical;' : ''}`;
+        });
+
+        document.getElementById('modal-boveda-item').classList.add('visible');
+        setTimeout(() => { const f = body.querySelector('input'); if(f) f.focus(); }, 120);
+      }
+
+      async function bovedaGuardarItem() {
+        const nombre = document.getElementById('bv-nombre')?.value.trim();
+        if (!nombre) { toast('⚠️ Ingresa un nombre'); return; }
+        const enc   = await bovedaGetItems();
+        let items   = [];
+        if (enc && enc.buf) {
+          try { items = await descifrar(_bovedaKey, enc.iv, enc.buf); } catch(e) {}
+        }
+        const editandoId = document.getElementById('modal-boveda-item').dataset.editandoId || '';
+        document.getElementById('modal-boveda-item').dataset.editandoId = '';
+        const id = editandoId || 'bv_' + Date.now();
+        // Si editando, remover el anterior
+        if (editandoId) items = items.filter(x => x.id !== editandoId);
+        if (_bovedaTipo === 'contrasena') {
+          items.push({ id, tipo: 'contrasena', nombre,
+                      url:        document.getElementById('bv-url')?.value.trim() || '',
+                      usuario:    document.getElementById('bv-usuario')?.value.trim() || '',
+                      contrasena: document.getElementById('bv-contrasena')?.value || '',
+                      notas:      document.getElementById('bv-notas')?.value.trim() || '' });
+        } else if (_bovedaTipo === 'tarjeta') {
+          const mes  = document.getElementById('bv-mes')?.value.trim().padStart(2,'0') || '';
+          const anio = document.getElementById('bv-anio')?.value.trim() || '';
+          const venc = mes && anio ? mes + '/' + anio : '';
+          items.push({ id, tipo: 'tarjeta', nombre,
+                      titular:     document.getElementById('bv-titular')?.value.trim() || '',
+                      numero:      document.getElementById('bv-numero')?.value.trim() || '',
+                      vencimiento: venc,
+                      cvv:         document.getElementById('bv-cvv')?.value || '',
+                      pin:         document.getElementById('bv-pin')?.value || '',
+                      notas:       document.getElementById('bv-notas')?.value.trim() || '' });
+        } else {
+          items.push({ id, tipo: 'nota', nombre,
+                      contenido: document.getElementById('bv-contenido')?.value.trim() || '' });
+        }
+        await bovedaGuardarCifrado(_bovedaKey, items);
+        toast('✅ Guardado en bóveda');
+        cerrarModal('modal-boveda-item');
+        await bovedaMostrarContenido();
+      }
+
+      function bovedaAbrirEditar(item) {
+        _bovedaTipo = item.tipo;
+        bovedaAbrirAgregar(item.tipo);
+        // Rellenar campos con datos existentes
+        setTimeout(() => {
+          const b = document.getElementById('boveda-item-body');
+          if (!b) return;
+          b.querySelector('#bv-nombre') && (b.querySelector('#bv-nombre').value = item.nombre || '');
+          if (item.tipo === 'contrasena') {
+            b.querySelector('#bv-url')        && (b.querySelector('#bv-url').value        = item.url || '');
+            b.querySelector('#bv-usuario')    && (b.querySelector('#bv-usuario').value    = item.usuario || '');
+            b.querySelector('#bv-contrasena') && (b.querySelector('#bv-contrasena').value = item.contrasena || '');
+            b.querySelector('#bv-notas')      && (b.querySelector('#bv-notas').value      = item.notas || '');
+          } else if (item.tipo === 'tarjeta') {
+            b.querySelector('#bv-titular')    && (b.querySelector('#bv-titular').value    = item.titular || '');
+            b.querySelector('#bv-numero')     && (b.querySelector('#bv-numero').value     = item.numero || '');
+            if (item.vencimiento) {
+              const [mm, aa] = item.vencimiento.split('/');
+              b.querySelector('#bv-mes')  && (b.querySelector('#bv-mes').value  = mm || '');
+              b.querySelector('#bv-anio') && (b.querySelector('#bv-anio').value = aa || '');
+            }
+            b.querySelector('#bv-cvv')  && (b.querySelector('#bv-cvv').value  = item.cvv || '');
+            b.querySelector('#bv-pin')  && (b.querySelector('#bv-pin').value  = item.pin || '');
+            b.querySelector('#bv-notas') && (b.querySelector('#bv-notas').value = item.notas || '');
+          } else {
+            b.querySelector('#bv-contenido') && (b.querySelector('#bv-contenido').value = item.contenido || '');
+          }
+          // Guardar id para actualizar en lugar de crear nuevo
+          document.getElementById('modal-boveda-item').dataset.editandoId = item.id;
+        }, 150);
+      }
+
+      async function bovedaEliminar(id) {
+        if (!confirm('¿Eliminar este item de la bóveda?')) return;
+        const enc  = await bovedaGetItems();
+        let items  = [];
+        if (enc && enc.buf) {
+          try { items = await descifrar(_bovedaKey, enc.iv, enc.buf); } catch(e) {}
+        }
+        items = items.filter(x => x.id !== id);
+        await bovedaGuardarCifrado(_bovedaKey, items);
+        toast('🗑️ Eliminado');
+        await bovedaMostrarContenido();
+      }
+
+      function bovedaBuscar(q) {
+        _bovedaBusqueda = q;
+        bovedaMostrarContenido();
+      }
+
+      function cerrarBoveda() {
+        _bovedaBusqueda = '';
+        document.getElementById('boveda-search-wrap').style.display = 'none';
+        document.getElementById('modal-boveda').classList.remove('visible');
+      }
+      
+      /* ── Google Passwords CSV ── */
+      // toggleMenuGooglePass eliminado — menú movido a dentro de la bóveda
+
+      async function exportarGooglePasswords() {
+        cerrarMenus();
+        document.getElementById('menu-gpass').style.display = 'none';
+        if (!_bovedaKey) {
+          toast('⚠️ Abre y desbloquea la bóveda primero');
+          return;
+        }
+        const enc = await bovedaGetItems();
+        let items = [];
+        if (enc && enc.buf) {
+          try { items = await descifrar(_bovedaKey, enc.iv, enc.buf); } catch(e) {
+            toast('❌ Error al descifrar'); return;
+          }
+        }
+        const contrasenas = items.filter(x => x.tipo === 'contrasena');
+        if (!contrasenas.length) { toast('⚠️ No hay contraseñas para exportar'); return; }
+
+        // Formato Google Passwords CSV
+        const filas = ['name,url,username,password,note'];
+        contrasenas.forEach(it => {
+          const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
+          filas.push([esc(it.nombre), esc(it.url), esc(it.usuario), esc(it.contrasena), esc(it.notas)].join(','));
+        });
+        const blob = new Blob([filas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const a    = document.createElement('a');
+        a.href     = URL.createObjectURL(blob);
+        a.download = 'Google_Passwords.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast(`📤 ${contrasenas.length} contraseñas exportadas`);
+      }
+
+      function importarGooglePasswords() {
+        cerrarMenus();
+        document.getElementById('menu-gpass').style.display = 'none';
+        if (!_bovedaKey) {
+          toast('⚠️ Abre y desbloquea la bóveda primero');
+          return;
+        }
+        document.getElementById('input-gpass').value = '';
+        document.getElementById('input-gpass').click();
+      }
+
+      async function procesarCSVGoogle(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const texto = await file.text();
+        const lineas = texto.split('\n').map(l => l.trim()).filter(l => l);
+        if (!lineas.length) { toast('⚠️ CSV vacío'); return; }
+
+        // Detectar cabecera
+        const cabecera = lineas[0].toLowerCase();
+        if (!cabecera.includes('name') && !cabecera.includes('url') && !cabecera.includes('username')) {
+          toast('⚠️ Formato CSV no reconocido'); return;
+        }
+
+        // Parsear CSV respetando comillas
+        function parsearFila(linea) {
+          const cols = [];
+          let actual = '', dentro = false;
+          for (let i = 0; i < linea.length; i++) {
+            const c = linea[i];
+            if (c === '"') {
+              if (dentro && linea[i+1] === '"') { actual += '"'; i++; }
+              else dentro = !dentro;
+            } else if (c === ',' && !dentro) {
+              cols.push(actual); actual = '';
+            } else {
+              actual += c;
+            }
+          }
+          cols.push(actual);
+          return cols;
+        }
+
+        const headers = parsearFila(lineas[0]).map(h => h.toLowerCase().trim());
+        const iName = headers.indexOf('name');
+        const iUrl  = headers.indexOf('url');
+        const iUser = headers.indexOf('username');
+        const iPass = headers.indexOf('password');
+        const iNote = headers.indexOf('note');
+
+        // Cargar items existentes
+        const enc  = await bovedaGetItems();
+        let items  = [];
+        if (enc && enc.buf) {
+          try { items = await descifrar(_bovedaKey, enc.iv, enc.buf); } catch(e) {}
+        }
+
+        let importados = 0, duplicados = 0;
+        for (let i = 1; i < lineas.length; i++) {
+          const cols    = parsearFila(lineas[i]);
+          const nombre  = iName >= 0 ? cols[iName]?.trim() : '';
+          const url     = iUrl  >= 0 ? cols[iUrl]?.trim()  : '';
+          const usuario = iUser >= 0 ? cols[iUser]?.trim() : '';
+          const clave   = iPass >= 0 ? cols[iPass]?.trim() : '';
+          if (!nombre && !url) continue;
+
+          // Evitar duplicados por url+usuario
+          const existe = items.some(x => x.tipo === 'contrasena' && x.url === url && x.usuario === usuario);
+          if (existe) { duplicados++; continue; }
+
+          const nota = iNote >= 0 ? cols[iNote]?.trim() : '';
+          items.push({
+            id:         'bv_' + Date.now() + '_' + i,
+            tipo:       'contrasena',
+            nombre:     nombre || url,
+            url,
+            usuario,
+            contrasena: clave,
+            notas:      nota
+          });
+          importados++;
+        }
+
+        await bovedaGuardarCifrado(_bovedaKey, items);
+        toast(`📥 ${importados} importadas${duplicados ? ', ' + duplicados + ' duplicadas omitidas' : ''}`);
+      }
+
     </script>
 
     <script>
