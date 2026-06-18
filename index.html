@@ -941,11 +941,20 @@
       async function guardarNube() {
         if (!CF_WORKER) { toast('⚠️ Configura el Worker URL primero'); return; }
         try {
+          // Incluir bóveda cifrada si existe
+          const bovedaEnc = await bovedaGetItems();
+          const bovedaMeta = await bovedaGetMeta();
+          const data = {
+            marcadores,
+            carpetas,
+            boveda_items: bovedaEnc  || null,
+            boveda_meta:  bovedaMeta || null
+          };
           const resp = await fetch(`${CF_WORKER}/kv-save`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: getId(), data: { marcadores, carpetas } })
+            body: JSON.stringify({ id: getId(), data })
           });
-          if (resp.ok) toast('☁️ Guardado en la nube ✓');
+          if (resp.ok) toast('☁️ Guardado en la nube ✓' + (bovedaMeta ? ' (bóveda incluida)' : ''));
           else throw new Error(resp.statusText);
         } catch(e) { toast('❌ Error: ' + e.message); }
       }
@@ -955,13 +964,23 @@
         try {
           const resp = await fetch(`${CF_WORKER}/kv-load?id=${getId()}`);
           const data = await resp.json();
-          if (data && data.marcadores) {
-            marcadores = data.marcadores; carpetas = data.carpetas || [];
-            await persistir();
-            Object.keys(blobURLCache).forEach(k => delete blobURLCache[k]);
-            renderChips(); renderGrid(); actualizarIconosFaltantes();
-            toast(`☁️ ${marcadores.length} marcadores cargados`);
-          } else { toast('☁️ Sin datos en la nube'); }
+          if (!data || !data.marcadores) { toast('☁️ Sin datos en la nube'); return; }
+
+          // Restaurar marcadores
+          marcadores = data.marcadores; carpetas = data.carpetas || [];
+          await persistir();
+          Object.keys(blobURLCache).forEach(k => delete blobURLCache[k]);
+          renderChips(); renderGrid(); actualizarIconosFaltantes();
+
+          // Restaurar bóveda cifrada si viene incluida
+          let msgBoveda = '';
+          if (data.boveda_meta && data.boveda_items) {
+            await dbPut('boveda', { ...data.boveda_meta, clave: 'meta' });
+            await dbPut('boveda', { ...data.boveda_items, clave: 'items' });
+            _bovedaKey = null; // forzar re-autenticación
+            msgBoveda  = ' + bóveda restaurada';
+          }
+          toast(`☁️ ${marcadores.length} marcadores cargados${msgBoveda}`);
         } catch(e) { toast('❌ Error: ' + e.message); }
       }
 
@@ -1096,7 +1115,7 @@
         };
 
         // Guardar
-        box.querySelector('#cfg-guardar').onclick = () => {
+        box.querySelector('#cfg-guardar').onclick = async () => {
           const nuevoWorker = box.querySelector('#cfg-worker-input').value.trim().replace(/\/$/,'');
           const nuevoId     = box.querySelector('#cfg-id-input').value.trim();
           if (nuevoWorker) {
@@ -1104,9 +1123,19 @@
             localStorage.setItem(WORKER_KEY, nuevoWorker);
           }
           if (nuevoId && nuevoId !== actualId) {
+            // Eliminar backup anterior en la nube
+            try {
+              await fetch(`${CF_WORKER}/kv-delete?id=${actualId}`);
+            } catch(e) {}
+            // Activar nuevo ID
             localStorage.setItem(KV_ID_KEY, nuevoId);
+            // Guardar backup completo con el nuevo ID
+            toast('⏳ Migrando backup al nuevo ID…');
+            await guardarNube();
+            toast('✅ ID migrado y backup guardado con nuevo ID');
+          } else {
+            toast('✅ Configuración guardada');
           }
-          toast('✅ Configuración guardada');
           cerrar();
         };
 
