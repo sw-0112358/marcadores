@@ -1024,13 +1024,93 @@
 
       /* ── Config Worker ── */
       function abrirConfigWorker() {
-        const actual = CF_WORKER;
-        const nueva  = prompt('☁️ Cloudflare Worker URL:', actual);
-        if (nueva === null) return;
-        if (!nueva.trim()) { toast('⚠️ URL vacía, no se guardó'); return; }
-        const url = nueva.trim().replace(/\/$/,'');
-        CF_WORKER = url; localStorage.setItem(WORKER_KEY, url);
-        toast('✅ Worker URL actualizado');
+        const actualWorker = CF_WORKER;
+        const actualId     = getId();
+
+        // Modal de configuración personalizado
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+        const box = document.createElement('div');
+        box.style.cssText = 'background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-md);width:100%;max-width:420px;overflow:hidden;';
+
+        box.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);">
+            <strong style="font-size:14px;">⚙️ Configuración de sync</strong>
+            <button id="cfg-cerrar" class="btn-icon">✕</button>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+
+            <div class="campo">
+              <label>Worker URL</label>
+              <div style="display:flex;gap:6px;">
+                <input id="cfg-worker-input" type="text" value="${actualWorker}" placeholder="https://…workers.dev"
+                       style="flex:1;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface-2);color:var(--text);outline:none;">
+                <button id="cfg-copy-worker" class="btn-icon" title="Copiar">📋</button>
+              </div>
+            </div>
+
+            <div class="campo">
+              <label>ID de sincronización</label>
+              <div style="display:flex;gap:6px;">
+                <input id="cfg-id-input" type="text" value="${actualId}" placeholder="mrc_…"
+                       style="flex:1;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface-2);color:var(--text);outline:none;font-family:monospace;">
+                <button id="cfg-copy-id" class="btn-icon" title="Copiar">📋</button>
+              </div>
+              <div style="font-size:11px;color:var(--text-hint);margin-top:4px;">Para sincronizar en otro dispositivo pega este mismo ID.</div>
+            </div>
+
+          </div>
+          <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">
+            <button id="cfg-cancelar" class="btn">Cancelar</button>
+            <button id="cfg-guardar" class="btn primary">Guardar</button>
+          </div>`;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const cerrar = () => document.body.removeChild(overlay);
+
+        box.querySelector('#cfg-cerrar').onclick    = cerrar;
+        box.querySelector('#cfg-cancelar').onclick  = cerrar;
+        overlay.addEventListener('click', e => { if (e.target === overlay) cerrar(); });
+
+        // Copiar Worker URL
+        box.querySelector('#cfg-copy-worker').onclick = () => {
+          const val = box.querySelector('#cfg-worker-input').value.trim();
+          if (!val) return;
+          navigator.clipboard.writeText(val).then(() => {
+            box.querySelector('#cfg-copy-worker').textContent = '✅';
+            setTimeout(() => box.querySelector('#cfg-copy-worker').textContent = '📋', 1500);
+          });
+        };
+
+        // Copiar ID
+        box.querySelector('#cfg-copy-id').onclick = () => {
+          const val = box.querySelector('#cfg-id-input').value.trim();
+          if (!val) return;
+          navigator.clipboard.writeText(val).then(() => {
+            box.querySelector('#cfg-copy-id').textContent = '✅';
+            setTimeout(() => box.querySelector('#cfg-copy-id').textContent = '📋', 1500);
+          });
+        };
+
+        // Guardar
+        box.querySelector('#cfg-guardar').onclick = () => {
+          const nuevoWorker = box.querySelector('#cfg-worker-input').value.trim().replace(/\/$/,'');
+          const nuevoId     = box.querySelector('#cfg-id-input').value.trim();
+          if (nuevoWorker) {
+            CF_WORKER = nuevoWorker;
+            localStorage.setItem(WORKER_KEY, nuevoWorker);
+          }
+          if (nuevoId && nuevoId !== actualId) {
+            localStorage.setItem(KV_ID_KEY, nuevoId);
+          }
+          toast('✅ Configuración guardada');
+          cerrar();
+        };
+
+        setTimeout(() => box.querySelector('#cfg-worker-input').focus(), 100);
       }
 
       /* ── Utilidades ── */
