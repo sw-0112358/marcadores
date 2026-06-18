@@ -1075,8 +1075,9 @@
                 <input id="cfg-id-input" type="text" value="${actualId}" placeholder="mrc_…"
                        style="flex:1;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface-2);color:var(--text);outline:none;font-family:monospace;">
                 <button id="cfg-copy-id" class="btn-icon" title="Copiar">📋</button>
+                <button id="cfg-del-id" class="btn-icon" title="Eliminar este ID del KV" style="color:var(--danger);border-color:var(--danger);">✕</button>
               </div>
-              <div style="font-size:11px;color:var(--text-hint);margin-top:4px;">Para sincronizar en otro dispositivo pega este mismo ID.</div>
+              <div style="font-size:11px;color:var(--text-hint);margin-top:4px;">Pega el ID del otro dispositivo para sincronizar. Usa ✕ para eliminar el ID actual del KV antes de reemplazarlo.</div>
             </div>
 
           </div>
@@ -1103,6 +1104,18 @@
             setTimeout(() => box.querySelector('#cfg-copy-worker').textContent = '📋', 1500);
           });
         };
+        
+        // Eliminar ID actual del KV
+        box.querySelector('#cfg-del-id').onclick = async () => {
+          const idAEliminar = box.querySelector('#cfg-id-input').value.trim();
+          if (!idAEliminar) { toast('⚠️ No hay ID para eliminar'); return; }
+          if (!CF_WORKER) { toast('⚠️ Configura el Worker URL primero'); return; }
+          if (!confirm(`¿Eliminar el ID "${idAEliminar}" del KV? Esto borra su backup en la nube.`)) return;
+          try {
+            await fetch(`${CF_WORKER}/kv-delete?id=${idAEliminar}`);
+            toast('🗑️ ID eliminado del KV');
+          } catch(e) { toast('❌ Error: ' + e.message); }
+        };
 
         // Copiar ID
         box.querySelector('#cfg-copy-id').onclick = () => {
@@ -1115,7 +1128,7 @@
         };
 
         // Guardar
-        box.querySelector('#cfg-guardar').onclick = async () => {
+        box.querySelector('#cfg-guardar').onclick = () => {
           const nuevoWorker = box.querySelector('#cfg-worker-input').value.trim().replace(/\/$/,'');
           const nuevoId     = box.querySelector('#cfg-id-input').value.trim();
           if (nuevoWorker) {
@@ -1123,16 +1136,8 @@
             localStorage.setItem(WORKER_KEY, nuevoWorker);
           }
           if (nuevoId && nuevoId !== actualId) {
-            // Eliminar backup anterior en la nube
-            try {
-              await fetch(`${CF_WORKER}/kv-delete?id=${actualId}`);
-            } catch(e) {}
-            // Activar nuevo ID
             localStorage.setItem(KV_ID_KEY, nuevoId);
-            // Guardar backup completo con el nuevo ID
-            toast('⏳ Migrando backup al nuevo ID…');
-            await guardarNube();
-            toast('✅ ID migrado y backup guardado con nuevo ID');
+            toast('✅ ID actualizado — usa "Cargar desde nube" para traer tus datos');
           } else {
             toast('✅ Configuración guardada');
           }
